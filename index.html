@@ -1,10 +1,12 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <title>실시간 멀티 마피아 게임</title>
+
+  <!-- 1. 반드시 Socket.io CDN 라이브러리를 최상단에서 먼저 불러와야 합니다 -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
   <style>
     :root {
       --bg: #1e1f22; --card: #2b2d31; --accent: #5865f2;
@@ -40,7 +42,7 @@
   <div class="container">
     <h1>🕵️ 온라인 마피아</h1>
 
-    <!-- 1. 초기 홈 화면 (방 생성/참가 선택) -->
+    <!-- 1. 초기 홈 화면 -->
     <div id="home-sec">
       <input type="text" id="nickname" placeholder="사용할 닉네임 입력">
       <div class="grid-2">
@@ -78,7 +80,7 @@
       <button class="btn-danger" onclick="showSec('home-sec')">취소</button>
     </div>
 
-    <!-- 4. 게임 메인 화면 (로비/낮/밤/투표) -->
+    <!-- 4. 게임 메인 화면 -->
     <div id="game-sec" class="hidden">
       <h2 id="room-title">방 코드: </h2>
       <div id="role-display" class="role-badge">대기 상태...</div>
@@ -104,6 +106,7 @@
   </div>
 
   <script>
+    // Socket.io 연결
     const socket = io("https://mafia3-uyks.onrender.com");
     let myId = '';
     let myRole = '';
@@ -172,14 +175,12 @@
       roomPlayers = players;
       currentPhase = phase;
 
-      // 방장 버튼 표출
       if (host === myId && phase === 'lobby') {
         document.getElementById('start-btn').classList.remove('hidden');
       } else {
         document.getElementById('start-btn').classList.add('hidden');
       }
 
-      // 플레이어 리스트 렌더링
       const listEl = document.getElementById('player-list');
       listEl.innerHTML = players.map(p => `
         <div class="player-card ${!p.alive ? 'dead' : ''}">
@@ -188,7 +189,6 @@
         </div>
       `).join('');
 
-      // 밤/투표 행동 패널 처리
       renderActionPanel();
     });
 
@@ -212,7 +212,6 @@
 
     socket.on('errorMsg', (msg) => alert(msg));
 
-    // 밤 능력 & 투표 타겟 버튼 생성
     function renderActionPanel() {
       const panel = document.getElementById('action-panel');
       const desc = document.getElementById('action-desc');
@@ -240,7 +239,6 @@
         desc.innerText = `[${myRole}] 능력을 사용할 대상을 선택하세요:`;
         
         roomPlayers.filter(p => p.alive).forEach(p => {
-          // 마피아는 팀원 제외 등의 추가 조건 작성 가능
           const btn = document.createElement('button');
           btn.innerText = `${p.name} 선택`;
           btn.onclick = () => socket.emit('nightAction', { targetId: p.id });
