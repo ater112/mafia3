@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>실시간 멀티 마피아 게임</title>
 
-  <!-- 1. 반드시 Socket.io CDN 라이브러리를 최상단에서 먼저 불러와야 합니다 -->
+  <!-- Socket.io CDN -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <style>
@@ -106,7 +106,6 @@
   </div>
 
   <script>
-    // Socket.io 연결
     const socket = io("https://mafia3-uyks.onrender.com");
     let myId = '';
     let myRole = '';
@@ -141,7 +140,9 @@
     function joinRoom() {
       const nickname = document.getElementById('nickname').value.trim();
       const roomCode = document.getElementById('join-code').value.trim();
-      if (!nickname || !roomCode) return alert('닉네임과 방 코드를 입력하세요.');
+
+      if (!nickname) return alert('닉네임을 입력하세요.');
+      if (!roomCode) return alert('방 코드가 올바르지 않습니다.');
 
       socket.emit('joinRoom', { roomCode, nickname });
     }
@@ -155,7 +156,6 @@
       input.value = '';
     }
 
-    // 소켓 이벤트 수신
     socket.on('roomCreated', ({ roomCode }) => {
       document.getElementById('room-title').innerText = `방 코드: ${roomCode}`;
       showSec('game-sec');
