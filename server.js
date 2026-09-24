@@ -4,8 +4,14 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
+
+// CORS 설정 강화 (Vercel 프론트엔드와 Render 백엔드 간 통신 수월화)
 const io = new Server(server, {
-  cors: { origin: "*" }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
 app.use(express.static('public'));
@@ -63,8 +69,10 @@ io.on('connection', (socket) => {
 
   // 2. 방 참가하기
   socket.on('joinRoom', ({ roomCode, nickname }) => {
-    roomCode = roomCode.toUpperCase();
-    const room = rooms[roomCode];
+    if (!roomCode) return socket.emit('errorMsg', '방 코드를 입력해주세요.');
+    
+    const code = roomCode.toUpperCase();
+    const room = rooms[code];
 
     if (!room) {
       return socket.emit('errorMsg', '존재하지 않는 방 코드입니다.');
@@ -73,9 +81,9 @@ io.on('connection', (socket) => {
       return socket.emit('errorMsg', '이미 게임이 진행 중인 방입니다.');
     }
 
-    currentRoom = roomCode;
+    currentRoom = code;
     userName = nickname;
-    socket.join(roomCode);
+    socket.join(code);
 
     room.players[socket.id] = {
       id: socket.id,
@@ -84,9 +92,9 @@ io.on('connection', (socket) => {
       alive: true
     };
 
-    socket.emit('roomJoined', { roomCode, isHost: room.host === socket.id });
-    updateRoomState(roomCode);
-    sendSysMsg(roomCode, `${nickname}님이 참가하셨습니다.`);
+    socket.emit('roomJoined', { roomCode: code, isHost: room.host === socket.id });
+    updateRoomState(code);
+    sendSysMsg(code, `${nickname}님이 참가하셨습니다.`);
   });
 
   // 3. 게임 시작 (방장 전용)
