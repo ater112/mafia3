@@ -5,7 +5,6 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 
-// CORS 설정 강화 (Vercel 프론트엔드와 Render 백엔드 간 통신 수월화)
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -16,10 +15,8 @@ const io = new Server(server, {
 
 app.use(express.static('public'));
 
-// 방 데이터 구조
 const rooms = {};
 
-// 방 코드 생성 함수 (6자리 무작위 대문자/숫자)
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
@@ -47,12 +44,12 @@ io.on('connection', (socket) => {
         doctorCount: parseInt(settings.doctorCount) || 1,
         policeCount: parseInt(settings.policeCount) || 1
       },
-      phase: 'lobby', // lobby, day, vote, night, ended
+      phase: 'lobby',
       timer: null,
       timeLeft: 0,
       players: {},
       actions: { mafiaTarget: null, doctorTarget: null },
-      votes: {} // voterId -> targetId
+      votes: {}
     };
 
     rooms[roomCode].players[socket.id] = {
@@ -69,13 +66,14 @@ io.on('connection', (socket) => {
 
   // 2. 방 참가하기
   socket.on('joinRoom', ({ roomCode, nickname }) => {
-    if (!roomCode) return socket.emit('errorMsg', '방 코드를 입력해주세요.');
+    if (!roomCode) return socket.emit('errorMsg', '방 코드가 올바르지 않습니다.');
     
     const code = roomCode.toUpperCase();
     const room = rooms[code];
 
+    // 방이 존재하지 않는 경우
     if (!room) {
-      return socket.emit('errorMsg', '존재하지 않는 방 코드입니다.');
+      return socket.emit('errorMsg', '방 코드가 올바르지 않습니다.');
     }
     if (room.phase !== 'lobby') {
       return socket.emit('errorMsg', '이미 게임이 진행 중인 방입니다.');
@@ -97,7 +95,7 @@ io.on('connection', (socket) => {
     sendSysMsg(code, `${nickname}님이 참가하셨습니다.`);
   });
 
-  // 3. 게임 시작 (방장 전용)
+  // 3. 게임 시작
   socket.on('startGame', () => {
     const room = rooms[currentRoom];
     if (!room || room.host !== socket.id) return;
@@ -109,7 +107,6 @@ io.on('connection', (socket) => {
       return socket.emit('errorMsg', `특수 직업 합계(${totalNeededRoles}명)보다 전체 인원이 더 많아야 합니다 (최소 1명 이상의 시민 필요).`);
     }
 
-    // 직업 셔플 및 부여
     let roles = [];
     for (let i = 0; i < room.settings.mafiaCount; i++) roles.push('마피아');
     for (let i = 0; i < room.settings.doctorCount; i++) roles.push('의사');
@@ -133,7 +130,6 @@ io.on('connection', (socket) => {
     const room = rooms[currentRoom];
     const player = room.players[socket.id];
 
-    // 사망자는 사망자끼리만 대화 혹은 채팅 제한
     if (player && !player.alive) {
       return socket.emit('chat', { sender: '시스템', text: '사망자는 채팅에 참여할 수 없습니다.' });
     }
@@ -173,7 +169,6 @@ io.on('connection', (socket) => {
     room.votes[socket.id] = targetId;
     socket.emit('sysMsg', '투표를 완료했습니다.');
 
-    // 살아있는 모든 유저가 투표했는지 체크
     const aliveCount = Object.values(room.players).filter(p => p.alive).length;
     if (Object.keys(room.votes).length >= aliveCount) {
       processVoteResult(currentRoom);
@@ -195,7 +190,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- 페이즈(단계) 전환 관리 ---
 function startPhase(roomCode, phase) {
   const room = rooms[roomCode];
   if (!room) return;
@@ -231,7 +225,6 @@ function startPhase(roomCode, phase) {
   }, 1000);
 }
 
-// 투표 결과 처리
 function processVoteResult(roomCode) {
   const room = rooms[roomCode];
   if (!room) return;
@@ -268,7 +261,6 @@ function processVoteResult(roomCode) {
   startPhase(roomCode, 'night');
 }
 
-// 밤 능력 결과 처리
 function processNightResult(roomCode) {
   const room = rooms[roomCode];
   if (!room) return;
@@ -294,7 +286,6 @@ function processNightResult(roomCode) {
   startPhase(roomCode, 'day');
 }
 
-// 승리 조건 체크
 function checkVictory(roomCode) {
   const room = rooms[roomCode];
   const alivePlayers = Object.values(room.players).filter(p => p.alive);
